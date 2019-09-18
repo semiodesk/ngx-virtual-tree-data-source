@@ -23,7 +23,7 @@ export class TreeFlatOverviewExample implements OnDestroy, AfterViewInit {
   /**
    * The Angular CDK virtual scroll viewport.
    */
-  @ViewChild(CdkVirtualScrollViewport)
+  @ViewChild(CdkVirtualScrollViewport, { static: true })
   virtualScroll: CdkVirtualScrollViewport;
 
   range: ListRange;
