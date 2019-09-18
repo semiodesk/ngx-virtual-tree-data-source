@@ -1,0 +1,28 @@
+<html>
+  <head>
+    <title>Angular App</title>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" />
+    <style>
+      body {
+        font-family: Roboto;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container p-5">
+      <h1 class="mb-3">Virtualized Tree View</h1>
+      <tree-flat-overview-example>
+        <mat-progress-spinner mode="indeterminate"></mat-progress-spinner>
+      </tree-flat-overview-example>
+      <h4 class="mt-5">Todo</h4>
+      <ol>
+        <li>Insert unloaded tree nodes as placeholders for the number of children => correct scrollbar size</li>
+        <li>Fix scrolling issue: Wrong start and end index because it improperly detects number of visible items</li>
+        <li>Load children when in visible range (after waiting for a few ms)</li>
+        <li>Implement selection state</li>
+        <li>Load arbitrary item with parents from id</li>
+      </ol>
+    </div>
+  </body>
+</html>
