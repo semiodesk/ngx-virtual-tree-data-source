@@ -2,20 +2,20 @@
   <!-- This needs to be the entire set of visible nodes for the scrollbar to work. -->
   <ng-container *cdkVirtualFor="let item of dataSource.data"></ng-container>
   <mat-tree [dataSource]="dataSource" [treeControl]="treeControl">
-    <mat-tree-node *matTreeNodeDef="let node" matTreeNodeToggle matTreeNodePadding matTreeNodePaddingIndent="25">
+    <mat-tree-node *matTreeNodeDef="let node" matTreeNodeToggle matTreeNodePadding matTreeNodePaddingIndent="25" (click)="dataSource.select(node)">
       <div class="d-flex flex-row align-items-center">
         <button mat-icon-button disabled></button>
         <div class="w-100 px-2">{{ getLabel(node) }}</div>
       </div>
     </mat-tree-node>
-    <mat-tree-node *matTreeNodeDef="let node; when: hasChild" matTreeNodePadding matTreeNodePaddingIndent="25">
+    <mat-tree-node *matTreeNodeDef="let node; when: hasChild" matTreeNodePadding matTreeNodePaddingIndent="25"  (click)="dataSource.select(node)">
       <div class="d-flex flex-row align-items-center w-100">
         <button mat-icon-button matTreeNodeToggle [attr.aria-label]="'toggle ' + getLabel(node)">
           <mat-icon class="mat-icon-rtl-mirror">
             {{ treeControl.isExpanded(node) ? "expand_more" : "chevron_right" }}
           </mat-icon>
         </button>
-        <div class="w-100 px-2">{{ getLabel(node) }}</div>
+        <div class="w-100 px-2">{{ getLabel(node) }} <span *ngIf="node.selected">selected</span></div>
         <div *ngIf="node.loading">Loading..</div>
       </div>
     </mat-tree-node>
@@ -25,6 +25,10 @@
   <tr *ngIf="dataSource.data">
     <td class="pr-5">Items:</td>
     <td class="text-right">{{ dataSource.data.length }}</td>
+  </tr>
+  <tr *ngIf="dataSource.data">
+    <td class="pr-5">Selected:</td>
+    <td class="text-right">{{ dataSource.selectedNode?.id }}</td>
   </tr>
   <tr *ngIf="range">
     <td class="pr-5">Start:</td>

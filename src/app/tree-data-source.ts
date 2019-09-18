@@ -20,6 +20,8 @@ export class TreeDataSource extends DataSource<TreeNode> {
     this.dataChange.next(data);
   }
 
+  selectedNode: TreeNode;
+
   /**
    * An observable that allows to subscribe to change events in the data.
    */
@@ -30,7 +32,7 @@ export class TreeDataSource extends DataSource<TreeNode> {
    * @param dataProvider A tree node data provider.
    * @param treeControl The tree control presenting the data.
    */
-  constructor(protected dataProvider: ITreeDataProvider, protected treeControl: FlatTreeControl<TreeNode>) {
+  constructor(protected treeControl: FlatTreeControl<TreeNode>, protected dataProvider: ITreeDataProvider) {
     super();
 
     dataProvider
@@ -63,8 +65,18 @@ export class TreeDataSource extends DataSource<TreeNode> {
     this._unsubscribe$.next();
   }
 
-  select(id) {
-    console.warn("select", id);
+  select(node) {
+    console.warn("select", node);
+    
+    if(this.selectedNode) {
+      this.selectedNode.selected = false;
+    }
+
+    this.selectedNode = this.data.filter(n => n == node)[0];
+
+    if(this.selectedNode) {
+      this.selectedNode.selected = true;
+    }
   }
 
   /**

@@ -29,10 +29,8 @@ export class TreeFlatOverviewExample implements OnDestroy, AfterViewInit {
   range: ListRange;
 
   constructor() {
-    let dataProvider = new ExampleTreeDataProvider();
-
     this.treeControl = new FlatTreeControl<TreeNode>(this._getLevel, this._isExpandable);
-    this.dataSource = new TreeDataSource(dataProvider, this.treeControl);
+    this.dataSource = new TreeDataSource(this.treeControl, new ExampleTreeDataProvider());
   }
 
   private _getLevel = (node: TreeNode) => node.level;
@@ -44,6 +42,8 @@ export class TreeFlatOverviewExample implements OnDestroy, AfterViewInit {
   getLabel = (node: TreeNode) => node.data;
 
   ngAfterViewInit() {
+    console.warn(this.virtualScroll);
+
     this.virtualScroll.renderedRangeStream.pipe(takeUntil(this._unsubscribe$)).subscribe(range => {
       this.range = range;
     });
@@ -51,5 +51,9 @@ export class TreeFlatOverviewExample implements OnDestroy, AfterViewInit {
 
   ngOnDestroy() {
     this._unsubscribe$.next();
+  }
+
+  select(node: TreeNode) {
+    node.selected = true;
   }
 }
