@@ -26,11 +26,11 @@ export class TreeFlatOverviewExample implements OnDestroy, AfterViewInit {
   @ViewChild(CdkVirtualScrollViewport, { static: true })
   virtualScroll: CdkVirtualScrollViewport;
 
-  range: ListRange;
+  range$: Subject<ListRange> = new Subject<ListRange>();
 
   constructor() {
     this.treeControl = new FlatTreeControl<TreeNode>(this._getLevel, this._isExpandable);
-    this.dataSource = new TreeDataSource(this.treeControl, new ExampleTreeDataProvider());
+    this.dataSource = new TreeDataSource(this.treeControl, new ExampleTreeDataProvider(), this.range$);
   }
 
   private _getLevel = (node: TreeNode) => node.level;
@@ -44,8 +44,8 @@ export class TreeFlatOverviewExample implements OnDestroy, AfterViewInit {
   ngAfterViewInit() {
     console.warn(this.virtualScroll);
 
-    this.virtualScroll.renderedRangeStream.pipe(takeUntil(this._unsubscribe$)).subscribe(range => {
-      this.range = range;
+    this.virtualScroll.renderedRangeStream.subscribe(range => {
+      this.range$.next(range);
     });
   }
 

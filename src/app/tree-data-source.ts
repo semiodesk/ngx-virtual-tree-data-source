@@ -1,6 +1,6 @@
-import { BehaviorSubject, Observable, merge, Subject, of } from "rxjs";
+import { BehaviorSubject, Observable, merge, Subject, of, Subscription } from "rxjs";
 import { map, take, takeUntil } from "rxjs/operators";
-import { CollectionViewer, SelectionChange, DataSource } from "@angular/cdk/collections";
+import { CollectionViewer, SelectionChange, DataSource, ListRange } from "@angular/cdk/collections";
 import { FlatTreeControl } from "@angular/cdk/tree";
 import { TreeNode } from "./tree-node";
 import { ITreeDataProvider } from "./tree-data-provider";
@@ -10,58 +10,105 @@ export class TreeDataSource extends DataSource<TreeNode> {
 
   private _connected: boolean;
 
+  private _subscription = new Subscription();
+
+  private _length: number = 0;
+  private _pageSize = 10;
+  public CachedData: Array<TreeNode>;
+  private _fetchedPages = new Set<number>();
+  private _dataProvider: ITreeDataProvider;
+  public dataChange: BehaviorSubject<TreeNode[] | undefined>;
+
   get data(): TreeNode[] {
-    return this.dataChange.value;
+    if( this.dataChange != null )
+      return this.dataChange.value;
+    return [];
   }
 
   set data(data: TreeNode[]) {
     this.treeControl.dataNodes = data;
 
-    this.dataChange.next(data);
+    if( this.dataChange != null )
+      this.dataChange.next(data);
   }
 
   selectedNode: TreeNode;
 
-  /**
-   * An observable that allows to subscribe to change events in the data.
-   */
-  dataChange = new BehaviorSubject<TreeNode[]>([]);
 
   /**
    * Create a new instance of the class.
    * @param dataProvider A tree node data provider.
    * @param treeControl The tree control presenting the data.
    */
-  constructor(protected treeControl: FlatTreeControl<TreeNode>, protected dataProvider: ITreeDataProvider) {
+  constructor(protected treeControl: FlatTreeControl<TreeNode>, protected dataProvider: ITreeDataProvider, protected range$: Subject<ListRange>) {
     super();
 
+    this._dataProvider = dataProvider;
     dataProvider
-      .getRootNodes$()
+      .getRootNodeCount$()
       .pipe(take(1))
-      .subscribe(nodes => (this.data = nodes));
+      .subscribe(count => {
+        this._length = count; 
+        this.CachedData = new Array<TreeNode>(count);
+        this.CachedData.fill(new TreeNode({expandable: false, loaded: false}))
+        this.dataChange = new BehaviorSubject<TreeNode[] | undefined>(this.CachedData);
+      });
+
+      this.range$.subscribe(range => {
+        console.log(range.start, range.end);
+         const startPage = this._getPageForIndex(range.start);
+         const endPage = this._getPageForIndex(range.end - 1);
+         for (let i = startPage; i <= endPage; i++) {
+           this._fetchPage(i);
+         }
+      });
+
   }
 
-  connect(collectionViewer: CollectionViewer): Observable<TreeNode[]> {
+  connect(collectionViewer: CollectionViewer): Observable<TreeNode[] | undefined> {
     console.warn("connect", collectionViewer);
 
     if (!this._connected) {
       this._connected = true;
 
-      this.treeControl.expansionModel.onChange.pipe(takeUntil(this._unsubscribe$)).subscribe(change => {
+      this._subscription.add(this.treeControl.expansionModel.onChange.subscribe(change => {
         let c = change as SelectionChange<TreeNode>;
 
         if (c.added || c.removed) {
           this.selectionChanged(c);
         }
-      });
-    }
+      }));
 
+      
+    }
     return merge(collectionViewer.viewChange, this.dataChange).pipe(map(() => this.data));
+
+  }
+
+  private _getPageForIndex(index: number): number {
+    return Math.floor(index / this._pageSize);
+  }
+
+  private _fetchPage(page: number) {
+    console.log("fetch: ", page);
+    if (this._fetchedPages.has(page)) {
+      return;
+    }
+    this._fetchedPages.add(page);
+   
+    this._dataProvider.getRootNodes$(page * this._pageSize, this._pageSize).pipe(map(nodes => {
+      console.log(nodes);
+       this.CachedData.splice(page * this._pageSize, this._pageSize,
+         ...nodes);
+         this.dataChange.next(this.CachedData);
+        })).subscribe();
+     ;
+  
   }
 
   disconnect() {
     console.warn("disconnect");
-
+    this._subscription.unsubscribe();
     this._unsubscribe$.next();
   }
 

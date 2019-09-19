@@ -10,9 +10,11 @@ export interface ITreeDataProvider {
    */
   getRootNodes$(startIndex?: number, itemCount?: number): Observable<TreeNode[]>;
 
+  getRootNodeCount$(): Observable<number>;
+
   getParentNodeIds$(node: TreeNode): Observable<string[]>;
 
-  getChildNodes$(node: TreeNode): Observable<TreeNode[]>;
+  getChildNodes$(node: TreeNode, startIndex?: number, itemCount?: number): Observable<TreeNode[]>;
 
   getChildNodeCount$(node: TreeNode): Observable<number>;
 }
@@ -30,7 +32,10 @@ export class ExampleTreeDataProvider implements ITreeDataProvider {
 
   private _childNodes: TreeNodeMap = {};
 
+  private _rootNodeCount: number = 0;
+
   constructor() {
+    this._rootNodeCount = 100;
     // Generate a total of 10.000 tree nodes with 100 root nodes.
     this._data = new TreeNodeGenerator((node, parent) => {
       if (parent) {
@@ -46,14 +51,30 @@ export class ExampleTreeDataProvider implements ITreeDataProvider {
           this._childNodes[parent.id].push(node);
         }
       }
-    }).generate(100, 10);
+    }).generate(this._rootNodeCount, 10);
   }
 
-  getRootNodes$(startIndex: number, itemCount: number): Observable<TreeNode[]> {
+  getRootNodes$(startIndex?: number, itemCount?: number): Observable<TreeNode[]> {
+    
     return Observable.create(observer => {
       setTimeout(() => {
-        observer.next(this._data);
+        if( startIndex != null && itemCount != null)
+          observer.next(this._data.slice(startIndex, startIndex+itemCount));
+        else{
+          observer.next(this._data);
+        }
+          
+
+      observer.complete();
       }, this._delay);
+    });
+  }
+
+
+  getRootNodeCount$(): Observable<number>{
+    return Observable.create(observer => {
+      observer.next(this._rootNodeCount);
+      observer.complete();
     });
   }
 
@@ -67,11 +88,12 @@ export class ExampleTreeDataProvider implements ITreeDataProvider {
         } else {
           observer.empty();
         }
+        observer.complete();
       }, this._delay);
     });
   }
 
-  getChildNodes$(node: TreeNode): Observable<TreeNode[]> {
+  getChildNodes$(node: TreeNode, startIndex?: number, itemCount?: number): Observable<TreeNode[]> {
     return Observable.create(observer => {
       setTimeout(() => {
         let children = this._childNodes[node.id];
@@ -81,6 +103,7 @@ export class ExampleTreeDataProvider implements ITreeDataProvider {
         } else {
           observer.empty();
         }
+        observer.complete();
       }, this._delay);
     });
   }
@@ -95,6 +118,7 @@ export class ExampleTreeDataProvider implements ITreeDataProvider {
         } else {
           observer.next(0);
         }
+        observer.complete();
       }, this._delay);
     });
   }

@@ -8,4 +8,8 @@ export class TreeNode {
   loaded: boolean = false;
   loading: boolean = false;
   children: TreeNode[] = [];
+
+  public constructor(init?:Partial<TreeNode>) {
+    Object.assign(this, init);
+}
 }
