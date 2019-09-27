@@ -1,4 +1,3 @@
-import { FlatTreeControl } from "@angular/cdk/tree";
 import { Component, ViewChild, OnDestroy, AfterViewInit } from "@angular/core";
 import { CdkVirtualScrollViewport } from "@angular/cdk/scrolling";
 import { TreeNode } from "./tree-node";
@@ -11,12 +10,10 @@ import { Subject } from "rxjs";
 @Component({
   selector: "tree-flat-overview-example",
   templateUrl: "tree-flat-overview-example.html",
-  styleUrls: ["tree-flat-overview-example.css"]
+  styleUrls: ["tree-flat-overview-example.scss"]
 })
 export class TreeFlatOverviewExample implements OnDestroy, AfterViewInit {
   private _unsubscribe$: Subject<any> = new Subject<any>();
-
-  treeControl: FlatTreeControl<TreeNode>;
 
   dataSource: TreeDataSource;
 
@@ -26,26 +23,23 @@ export class TreeFlatOverviewExample implements OnDestroy, AfterViewInit {
   @ViewChild(CdkVirtualScrollViewport, { static: true })
   virtualScroll: CdkVirtualScrollViewport;
 
-  range: ListRange;
+  range$: Subject<ListRange> = new Subject<ListRange>();
 
   constructor() {
-    this.treeControl = new FlatTreeControl<TreeNode>(this._getLevel, this._isExpandable);
-    this.dataSource = new TreeDataSource(this.treeControl, new ExampleTreeDataProvider());
+    this.dataSource = new TreeDataSource(new ExampleTreeDataProvider(), this.range$);
   }
 
-  private _getLevel = (node: TreeNode) => node.level;
+  getLevel = (node: TreeNode) => node.level;
 
-  private _isExpandable = (node: TreeNode) => node.expandable;
+  isExpandable = (node: TreeNode) => node.expandable;
 
   hasChild = (_: number, node: TreeNode) => node.expandable;
 
   getLabel = (node: TreeNode) => node.data;
 
   ngAfterViewInit() {
-    console.warn(this.virtualScroll);
-
-    this.virtualScroll.renderedRangeStream.pipe(takeUntil(this._unsubscribe$)).subscribe(range => {
-      this.range = range;
+    this.virtualScroll.renderedRangeStream.subscribe(range => {
+      this.range$.next(range);
     });
   }
 
@@ -54,6 +48,10 @@ export class TreeFlatOverviewExample implements OnDestroy, AfterViewInit {
   }
 
   select(node: TreeNode) {
-    node.selected = true;
+    this.dataSource.select(node);
+  }
+
+  toggle(node: TreeNode) {
+    this.dataSource.toggle(node);
   }
 }

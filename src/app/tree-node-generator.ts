@@ -11,7 +11,7 @@ export class TreeNodeGenerator {
 
   _nodeCreated: (node: TreeNode, parent?: TreeNode) => void;
 
-  constructor(nodeCreated: (node: TreeNode, parent?: TreeNode) => void) {
+  constructor(nodeCreated: (node: TreeNode, parent?: TreeNode, children?: TreeNode[]) => void) {
     this._nodeCreated = nodeCreated;
   }
 
@@ -24,13 +24,13 @@ export class TreeNodeGenerator {
     let result = [];
 
     for (let i = 0; i < rootCount; i++) {
-      let n = this._createNode(this.nodeCount++);
+      let n = this._createNode(this.nodeCount++, childrenCount);
 
       for (let j = 0; j < childrenCount; j++) {
-        let m = this._createNode(this.nodeCount++, n, 1);
+        let m = this._createNode(this.nodeCount++, childrenCount, n, 1);
 
         for (let k = 0; k < childrenCount; k++) {
-          this._createNode(this.nodeCount++, m, 2);
+          this._createNode(this.nodeCount++, childrenCount, m, 2);
         }
       }
 
@@ -40,16 +40,13 @@ export class TreeNodeGenerator {
     return result;
   }
 
-  private _createNode(id: number, parentNode?: TreeNode, level?: number): TreeNode {
+  private _createNode(id: number, childrenCount: number, parentNode?: TreeNode, level: number = 0): TreeNode {
     let node = new TreeNode();
     node.id = "node:" + id;
     node.data = "Node " + id;
     node.level = level;
-
-    if (parentNode) {
-      parentNode.children.push(node);
-      parentNode.expandable = true;
-    }
+    node.childrenCount = childrenCount;
+    node.expandable = childrenCount > 0;
 
     if (this._nodeCreated) {
       this._nodeCreated(node, parentNode);

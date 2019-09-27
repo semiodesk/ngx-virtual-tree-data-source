@@ -32,7 +32,7 @@ export class ExampleTreeDataProvider implements ITreeDataProvider {
 
   constructor() {
     // Generate a total of 10.000 tree nodes with 100 root nodes.
-    this._data = new TreeNodeGenerator((node, parent) => {
+    this._data = new TreeNodeGenerator((node, parent, children) => {
       if (parent) {
         if (!this._parentNodes[node.id]) {
           this._parentNodes[node.id] = [parent];
@@ -50,6 +50,8 @@ export class ExampleTreeDataProvider implements ITreeDataProvider {
   }
 
   getRootNodes$(startIndex: number, itemCount: number): Observable<TreeNode[]> {
+    console.warn("getRootNodes$", startIndex, itemCount);
+
     return Observable.create(observer => {
       setTimeout(() => {
         observer.next(this._data);
@@ -58,6 +60,8 @@ export class ExampleTreeDataProvider implements ITreeDataProvider {
   }
 
   getParentNodeIds$(node: TreeNode): Observable<string[]> {
+    console.warn("getParentNodeIds$", node);
+
     return Observable.create(observer => {
       setTimeout(() => {
         let parents = this._parentNodes[node.id];
@@ -72,6 +76,8 @@ export class ExampleTreeDataProvider implements ITreeDataProvider {
   }
 
   getChildNodes$(node: TreeNode): Observable<TreeNode[]> {
+    console.warn("getChildNodes$", node);
+
     return Observable.create(observer => {
       setTimeout(() => {
         let children = this._childNodes[node.id];
@@ -86,6 +92,8 @@ export class ExampleTreeDataProvider implements ITreeDataProvider {
   }
 
   getChildNodeCount$(node: TreeNode): Observable<number> {
+    console.warn("getChildNodeCount$", node);
+
     return Observable.create(observer => {
       setTimeout(() => {
         let children = this._childNodes[node.id];

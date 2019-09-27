@@ -1,100 +1,63 @@
-import { BehaviorSubject, Observable, merge, Subject, of } from "rxjs";
-import { map, take, takeUntil } from "rxjs/operators";
-import { CollectionViewer, SelectionChange, DataSource } from "@angular/cdk/collections";
-import { FlatTreeControl } from "@angular/cdk/tree";
+import { BehaviorSubject, Observable, Subject, merge } from "rxjs";
+import { map, take } from "rxjs/operators";
+import { DataSource, CollectionViewer, ListRange } from "@angular/cdk/collections";
 import { TreeNode } from "./tree-node";
 import { ITreeDataProvider } from "./tree-data-provider";
 
 export class TreeDataSource extends DataSource<TreeNode> {
   private _unsubscribe$: Subject<any> = new Subject<any>();
 
-  private _connected: boolean;
-
-  get data(): TreeNode[] {
-    return this.dataChange.value;
+  get nodes(): TreeNode[] {
+    return this.nodes$ ? this.nodes$.value : [];
   }
 
-  set data(data: TreeNode[]) {
-    this.treeControl.dataNodes = data;
-
-    this.dataChange.next(data);
+  set nodes(data: TreeNode[]) {
+    this.nodes$.next(data);
   }
-
-  selectedNode: TreeNode;
 
   /**
    * An observable that allows to subscribe to change events in the data.
    */
-  dataChange = new BehaviorSubject<TreeNode[]>([]);
+  nodes$ = new BehaviorSubject<TreeNode[]>(this.nodes);
+
+  selectedNode: TreeNode;
 
   /**
    * Create a new instance of the class.
    * @param dataProvider A tree node data provider.
    * @param treeControl The tree control presenting the data.
    */
-  constructor(protected treeControl: FlatTreeControl<TreeNode>, protected dataProvider: ITreeDataProvider) {
+  constructor(protected dataProvider: ITreeDataProvider, protected range$: Subject<ListRange>) {
     super();
 
-    dataProvider
-      .getRootNodes$()
-      .pipe(take(1))
-      .subscribe(nodes => (this.data = nodes));
+    if (dataProvider) {
+      dataProvider
+        .getRootNodes$()
+        .pipe(take(1))
+        .subscribe(nodes => (this.nodes = nodes));
+    }
+
+    if(range$) {
+    }
   }
 
   connect(collectionViewer: CollectionViewer): Observable<TreeNode[]> {
-    console.warn("connect", collectionViewer);
-
-    if (!this._connected) {
-      this._connected = true;
-
-      this.treeControl.expansionModel.onChange.pipe(takeUntil(this._unsubscribe$)).subscribe(change => {
-        let c = change as SelectionChange<TreeNode>;
-
-        if (c.added || c.removed) {
-          this.selectionChanged(c);
-        }
-      });
-    }
-
-    return merge(collectionViewer.viewChange, this.dataChange).pipe(map(() => this.data));
+    return merge(collectionViewer.viewChange, this.nodes$).pipe(map(() => this.nodes));
   }
 
   disconnect() {
-    console.warn("disconnect");
-
     this._unsubscribe$.next();
   }
 
   select(node) {
-    console.warn("select", node);
-    
-    if(this.selectedNode) {
+    if (this.selectedNode) {
       this.selectedNode.selected = false;
     }
 
-    this.selectedNode = this.data.filter(n => n == node)[0];
+    this.selectedNode = node;
 
-    if(this.selectedNode) {
+    if (this.selectedNode) {
       this.selectedNode.selected = true;
-    }
-  }
-
-  /**
-   * Handle changes in the selection state of the tree view's nodes.
-   * @param change Selection change data.
-   */
-  selectionChanged(change: SelectionChange<TreeNode>) {
-    console.warn("selectionChanged", change);
-
-    if (change.added) {
-      change.added.forEach(node => this._toggleNode(node, true));
-    }
-
-    if (change.removed) {
-      change.removed
-        .slice()
-        .reverse()
-        .forEach(node => this._toggleNode(node, false));
     }
   }
 
@@ -103,19 +66,18 @@ export class TreeDataSource extends DataSource<TreeNode> {
    * @param node Node to be selected or deselected.
    * @param expand Indicates if the node should be expanded.
    */
-  private _toggleNode(node: TreeNode, expand: boolean) {
-    console.warn("_toggleNode", node, expand);
-
+  toggle(node: TreeNode) {
     if (!node.expandable) {
       return;
     }
 
-    const index = this.data.indexOf(node);
+    const index = this.nodes.indexOf(node);
 
     if (index < 0) {
       return;
     }
 
+    let expand = !node.expanded;
     let i = index + 1;
 
     if (expand && !node.expanded) {
@@ -136,20 +98,18 @@ export class TreeDataSource extends DataSource<TreeNode> {
    * @param emitDataChange Indicates if the data change event should be emitted.
    */
   private _insertChildNodes$(index: number, node: TreeNode, emitDataChange: boolean): Observable<number> {
-    console.warn("_insertChildNodes$", index, node);
-
     node.loading = true;
 
     return this.dataProvider.getChildNodes$(node).pipe(
       take(1),
       map(nodes => {
-        this.data.splice(index, 0, ...nodes);
+        this.nodes.splice(index, 0, ...nodes);
 
         node.loading = false;
         node.expanded = true;
 
         if (emitDataChange) {
-          this.dataChange.next(this.data);
+          this.nodes$.next(this.nodes);
         }
 
         return nodes.length;
@@ -164,23 +124,30 @@ export class TreeDataSource extends DataSource<TreeNode> {
    * @param emitDataChange Indicates if the data change event should be emitted.
    */
   private _removeChildNodes$(index: number, node: TreeNode, emitDataChange: boolean): Observable<number> {
-    console.warn("_removeChildNodes$", index, node);
-
     node.loading = true;
 
-    return this.dataProvider.getChildNodeCount$(node).pipe(
-      map(n => {
-        this.data.splice(index, n);
+    return Observable.create(observer => {
+      let n = 0;
+      let i = index;
 
-        node.loading = false;
-        node.expanded = false;
+      while (i < this.nodes.length && this.nodes[i].level > node.level) {
+        n++;
+        i++;
+      }
 
-        if (emitDataChange) {
-          this.dataChange.next(this.data);
-        }
+      if (n > 0) {
+        this.nodes.splice(index, n);
+      }
 
-        return n;
-      })
-    );
+      node.loading = false;
+      node.expanded = false;
+
+      if (emitDataChange) {
+        this.nodes$.next(this.nodes);
+      }
+
+      observer.next(n);
+      observer.complete();
+    });
   }
 }

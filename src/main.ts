@@ -11,6 +11,8 @@ import { BrowserModule } from "@angular/platform-browser";
 import { platformBrowserDynamic } from "@angular/platform-browser-dynamic";
 import { BrowserAnimationsModule } from "@angular/platform-browser/animations";
 import { TreeFlatOverviewExample } from "./app/tree-flat-overview-example";
+import { TreeNodeDirective } from "./app/directives/tree-node.directive";
+import { TreeNodeToggleDirective } from "./app/directives/tree-node-toggle.directive";
 
 @NgModule({
   exports: [
@@ -35,9 +37,9 @@ export class DemoMaterialModule {}
     ReactiveFormsModule
   ],
   entryComponents: [TreeFlatOverviewExample],
-  declarations: [TreeFlatOverviewExample],
+  declarations: [TreeFlatOverviewExample, TreeNodeDirective, TreeNodeToggleDirective],
   bootstrap: [TreeFlatOverviewExample],
-  providers: []
+  providers: [TreeNodeDirective, TreeNodeToggleDirective]
 })
 export class AppModule {}
 
