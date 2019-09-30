@@ -26,7 +26,7 @@ export class TreeFlatOverviewExample implements OnDestroy, AfterViewInit {
   range$: Subject<ListRange> = new Subject<ListRange>();
 
   constructor() {
-    this.dataSource = new TreeDataSource(new ExampleTreeDataProvider(), this.range$);
+    this.dataSource = new TreeDataSource(new ExampleTreeDataProvider());
   }
 
   getLevel = (node: TreeNode) => node.level;

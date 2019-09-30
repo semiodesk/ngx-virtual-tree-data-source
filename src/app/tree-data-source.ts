@@ -1,11 +1,24 @@
-import { BehaviorSubject, Observable, Subject, merge } from "rxjs";
-import { map, take } from "rxjs/operators";
+import { BehaviorSubject, Observable, Subject, merge, timer } from "rxjs";
+import { map, take, takeUntil, debounce } from "rxjs/operators";
 import { DataSource, CollectionViewer, ListRange } from "@angular/cdk/collections";
 import { TreeNode } from "./tree-node";
 import { ITreeDataProvider } from "./tree-data-provider";
 
+interface ITreeRange {
+  [key: number]: {
+    parent: TreeNode;
+    nodes: TreeNode[];
+    range: {
+      start: number;
+      end: number;
+    };
+  };
+}
+
 export class TreeDataSource extends DataSource<TreeNode> {
   private _unsubscribe$: Subject<any> = new Subject<any>();
+
+  private _range: ListRange;
 
   get nodes(): TreeNode[] {
     return this.nodes$ ? this.nodes$.value : [];
@@ -13,12 +26,21 @@ export class TreeDataSource extends DataSource<TreeNode> {
 
   set nodes(data: TreeNode[]) {
     this.nodes$.next(data);
+
+    if (this._range) {
+      this.load$.next(this._range);
+    }
   }
 
   /**
-   * An observable that allows to subscribe to change events in the data.
+   * Observable which allows to subscribe to change events in the data.
    */
-  nodes$ = new BehaviorSubject<TreeNode[]>(this.nodes);
+  nodes$: BehaviorSubject<TreeNode[]> = new BehaviorSubject<TreeNode[]>(this.nodes);
+
+  /**
+   * Observable which is emits the data range when nodes need to be loaded.
+   */
+  load$: Subject<ListRange> = new Subject<ListRange>();
 
   selectedNode: TreeNode;
 
@@ -27,22 +49,30 @@ export class TreeDataSource extends DataSource<TreeNode> {
    * @param dataProvider A tree node data provider.
    * @param treeControl The tree control presenting the data.
    */
-  constructor(protected dataProvider: ITreeDataProvider, protected range$: Subject<ListRange>) {
+  constructor(protected dataProvider: ITreeDataProvider) {
     super();
 
     if (dataProvider) {
       dataProvider
-        .getRootNodes$()
+        .getRootNodesCount$()
         .pipe(take(1))
-        .subscribe(nodes => (this.nodes = nodes));
-    }
-
-    if(range$) {
+        .subscribe(count => {
+          this.nodes = this._createDummyNodes(count);
+        });
     }
   }
 
   connect(collectionViewer: CollectionViewer): Observable<TreeNode[]> {
-    return merge(collectionViewer.viewChange, this.nodes$).pipe(map(() => this.nodes));
+    // Load new nodes when load$ is emitted..
+    this.load$.pipe(takeUntil(this._unsubscribe$)).subscribe(range => this._loadNodes(range));
+
+    // After a debounce period, load new nodes when the viewed data range has changed..
+    collectionViewer.viewChange.pipe(debounce(() => timer(200))).subscribe(range => {
+      this._range = range;
+      this.load$.next(range);
+    });
+
+    return this.nodes$;
   }
 
   disconnect() {
@@ -91,6 +121,62 @@ export class TreeDataSource extends DataSource<TreeNode> {
     }
   }
 
+  // Todo: Do not fetch by node level, but by parent id instead.
+  // Todo: Load nodes recursively.
+  private _loadNodes(range: ListRange) {
+    let result: ITreeRange = {};
+
+    let currentLevel = Number.MAX_VALUE;
+
+    // Iterate the visible nodes and return the visible ranges, grouped by node level.
+    this.nodes
+      .slice(range.start, range.end)
+      .filter(n => !n.loaded)
+      .forEach((n, i, nodes) => {
+        let r = result[n.level];
+
+        if (r) {
+          r.nodes.push(n);
+          r.range.end = n.index;
+        } else {
+          r = { parent: n.parent, nodes: [n], range: { start: n.index, end: n.index } };
+
+          result[n.level] = r;
+        }
+
+        if (currentLevel < n.level || nodes.length - 1 == i) {
+          console.warn(r.range);
+
+          this._getNodes(r.nodes, n.parent, r.range.start, r.range.end);
+        } else {
+          currentLevel = n.level;
+        }
+      });
+  }
+
+  private _getNodes(nodes: TreeNode[], parent: TreeNode, startIndex: number, endIndex: number) {
+    let count = Math.max(1, endIndex - startIndex);
+
+    this.dataProvider
+      .getNodes$(parent, startIndex, count)
+      .pipe(take(1))
+      .subscribe(data => {
+        data.forEach((node, i) => {
+          let n = nodes[i];
+
+          if (n) {
+            n.id = node.id;
+            n.data = node.data;
+            n.childrenCount = node.childrenCount;
+            n.expandable = node.childrenCount > 0;
+            n.loaded = true;
+          }
+        });
+
+        this.nodes$.next(this.nodes);
+      });
+  }
+
   /**
    * Load children of a given node and insert them at a given position in the data array.
    * @param index Position in the data array where the child nodes should be inserted.
@@ -100,21 +186,35 @@ export class TreeDataSource extends DataSource<TreeNode> {
   private _insertChildNodes$(index: number, node: TreeNode, emitDataChange: boolean): Observable<number> {
     node.loading = true;
 
-    return this.dataProvider.getChildNodes$(node).pipe(
-      take(1),
-      map(nodes => {
-        this.nodes.splice(index, 0, ...nodes);
+    return Observable.create(observer => {
+      this.nodes.splice(index, 0, ...this._createDummyNodes(node.childrenCount, node));
 
-        node.loading = false;
-        node.expanded = true;
+      node.loading = false;
+      node.expanded = true;
 
-        if (emitDataChange) {
-          this.nodes$.next(this.nodes);
-        }
+      if (emitDataChange) {
+        this.nodes$.next(this.nodes);
+        this.load$.next(this._range);
+      }
 
-        return nodes.length;
-      })
-    );
+      observer.next(node.childrenCount);
+      observer.complete();
+    });
+  }
+
+  /**
+   * Create a given amount of empty, unloaded tree nodes.
+   * @param nodeCount Number of created nodes.
+   * @param parentNode Parent node of the newly created nodes.
+   */
+  private _createDummyNodes(nodeCount: number, parentNode?: TreeNode): TreeNode[] {
+    let nodes = new Array<TreeNode>(nodeCount);
+
+    for (let i = 0; i < nodeCount; i++) {
+      nodes[i] = new TreeNode(parentNode, { index: i });
+    }
+
+    return nodes;
   }
 
   /**
@@ -144,6 +244,7 @@ export class TreeDataSource extends DataSource<TreeNode> {
 
       if (emitDataChange) {
         this.nodes$.next(this.nodes);
+        this.load$.next(this._range);
       }
 
       observer.next(n);

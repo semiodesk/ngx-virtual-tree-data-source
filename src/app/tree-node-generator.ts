@@ -30,7 +30,7 @@ export class TreeNodeGenerator {
         let m = this._createNode(this.nodeCount++, childrenCount, n, 1);
 
         for (let k = 0; k < childrenCount; k++) {
-          this._createNode(this.nodeCount++, childrenCount, m, 2);
+          this._createNode(this.nodeCount++, 0, m, 2);
         }
       }
 
@@ -45,8 +45,12 @@ export class TreeNodeGenerator {
     node.id = "node:" + id;
     node.data = "Node " + id;
     node.level = level;
+    node.parent = parentNode;
     node.childrenCount = childrenCount;
+    node.loaded = true;
+    node.loading = false;
     node.expandable = childrenCount > 0;
+    node.expanded = false;
 
     if (this._nodeCreated) {
       this._nodeCreated(node, parentNode);

@@ -3,18 +3,13 @@ import { TreeNode } from "./tree-node";
 import { TreeNodeGenerator } from "./tree-node-generator";
 
 export interface ITreeDataProvider {
-  /**
-   * Load the top-level nodes of a tree control.
-   * @param startIndex Index of the first node in the data set.
-   * @param itemCount Number of nodes to fetch.
-   */
-  getRootNodes$(startIndex?: number, itemCount?: number): Observable<TreeNode[]>;
+  getRootNodesCount$(): Observable<number>;
 
   getParentNodeIds$(node: TreeNode): Observable<string[]>;
 
-  getChildNodes$(node: TreeNode): Observable<TreeNode[]>;
-
   getChildNodeCount$(node: TreeNode): Observable<number>;
+
+  getNodes$(parent: TreeNode, startIndex?: number, itemCount?: number): Observable<TreeNode[]>;
 }
 
 interface TreeNodeMap {
@@ -22,7 +17,7 @@ interface TreeNodeMap {
 }
 
 export class ExampleTreeDataProvider implements ITreeDataProvider {
-  private _delay: number = 500;
+  private _delayEnabled: boolean = false;
 
   private _data: TreeNode[];
 
@@ -32,7 +27,7 @@ export class ExampleTreeDataProvider implements ITreeDataProvider {
 
   constructor() {
     // Generate a total of 10.000 tree nodes with 100 root nodes.
-    this._data = new TreeNodeGenerator((node, parent, children) => {
+    this._data = new TreeNodeGenerator((node, parent) => {
       if (parent) {
         if (!this._parentNodes[node.id]) {
           this._parentNodes[node.id] = [parent];
@@ -49,13 +44,61 @@ export class ExampleTreeDataProvider implements ITreeDataProvider {
     }).generate(100, 10);
   }
 
-  getRootNodes$(startIndex: number, itemCount: number): Observable<TreeNode[]> {
+  private _getDelay() {
+    return this._delayEnabled ? Math.random() * 1000 + 200 : 0;
+  }
+
+  getNodes$(parent: TreeNode, startIndex?: number, itemCount?: number): Observable<TreeNode[]> {
+    if (!parent) {
+      return this.getRootNodes$(startIndex, itemCount);
+    } else {
+      return this.getChildNodes$(parent, startIndex, itemCount);
+    }
+  }
+
+  getRootNodes$(startIndex: number = -1, itemCount: number = -1): Observable<TreeNode[]> {
     console.warn("getRootNodes$", startIndex, itemCount);
 
     return Observable.create(observer => {
       setTimeout(() => {
-        observer.next(this._data);
-      }, this._delay);
+        if (startIndex > -1 && itemCount > -1) {
+          observer.next(this._data.slice(startIndex, startIndex + itemCount));
+        } else {
+          observer.next(this._data);
+        }
+
+        observer.complete();
+      }, this._getDelay());
+    });
+  }
+
+  getChildNodes$(node: TreeNode, startIndex = -1, itemCount = -1): Observable<TreeNode[]> {
+    console.warn("getChildNodes$", node, startIndex, itemCount);
+
+    return Observable.create(observer => {
+      setTimeout(() => {
+        let children = this._childNodes[node.id];
+
+        if (children) {
+          if (startIndex > -1 && itemCount > -1) {
+            observer.next(children.slice(startIndex, startIndex + itemCount));
+          } else {
+            observer.next(children);
+          }
+        }
+
+        observer.complete();
+      }, this._getDelay());
+    });
+  }
+
+  getRootNodesCount$(): Observable<number> {
+    console.warn("getRootNodesCount$");
+
+    return Observable.create(observer => {
+      setTimeout(() => {
+        observer.next(this._data.length);
+      }, this._getDelay());
     });
   }
 
@@ -68,26 +111,10 @@ export class ExampleTreeDataProvider implements ITreeDataProvider {
 
         if (parents) {
           observer.next(parents.map(n => n.id));
-        } else {
-          observer.empty();
         }
-      }, this._delay);
-    });
-  }
 
-  getChildNodes$(node: TreeNode): Observable<TreeNode[]> {
-    console.warn("getChildNodes$", node);
-
-    return Observable.create(observer => {
-      setTimeout(() => {
-        let children = this._childNodes[node.id];
-
-        if (children) {
-          observer.next(children);
-        } else {
-          observer.empty();
-        }
-      }, this._delay);
+        observer.complete();
+      }, this._getDelay());
     });
   }
 
@@ -103,7 +130,7 @@ export class ExampleTreeDataProvider implements ITreeDataProvider {
         } else {
           observer.next(0);
         }
-      }, this._delay);
+      }, this._getDelay());
     });
   }
 }
