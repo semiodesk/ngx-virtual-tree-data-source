@@ -1,8 +1,11 @@
 ::ng-deep .tree-node {
   display: flex;
-  justify-content: start;
+  justify-content: flex-start;
   align-items: center;
   height: 48px;
+  margin: 0 3px;
+  padding: 0 4px;
+  border-radius: 24px;
   cursor: hand;
   user-select: none;
   -webkit-user-select: none;
@@ -15,6 +18,10 @@
 
 ::ng-deep .tree-node:hover {
   background: #efefef;
+}
+
+::ng-deep .tree-node .tree-node-toggle {
+  margin-right: 5px;
 }
 
 .lds-ring {

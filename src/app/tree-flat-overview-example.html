@@ -1,9 +1,9 @@
 <div class="row">
   <div class="col-md-9">
     <cdk-virtual-scroll-viewport itemSize="48" style="height: 300px;">
-      <!-- This needs to be the entire set of visible nodes for the scrollbar to work. -->
-      <div class="tree-node" matRipple *cdkVirtualFor="let node of dataSource" [treeNode]="node" (click)="select(node)">
-        <button [treeNodeToggle]="node.expandable" mat-button mat-icon-button class="mr-2" (click)="toggle(node)">
+      <!-- This needs to be the entire set of visible nodes for the scrollbar to work properly  . -->
+      <div class="tree-node" *cdkVirtualFor="let node of dataSource" [treeNode]="node" (click)="select(node)">
+        <button class="tree-node-toggle" mat-button mat-icon-button [treeNodeToggle]="node.expandable" (click)="toggle(node)">
           <mat-icon *ngIf="!node.expanded">chevron_right</mat-icon>
           <mat-icon *ngIf="node.expanded">expand_more</mat-icon>
         </button>

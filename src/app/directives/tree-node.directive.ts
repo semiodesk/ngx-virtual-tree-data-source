@@ -22,7 +22,7 @@ export class TreeNodeDirective implements OnInit {
   setPadding(node: TreeNode) {
     if (node) {
       // Use renderer to render the element with styles
-      this.renderer.setElementStyle(this.element.nativeElement, "padding-left", this.treeNode.level * 20 + "px");
+      this.renderer.setElementStyle(this.element.nativeElement, "margin-left", this.treeNode.level * 20 + "px");
     }
   }
 }

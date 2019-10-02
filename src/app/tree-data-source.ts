@@ -4,25 +4,6 @@ import { DataSource, CollectionViewer, ListRange } from "@angular/cdk/collection
 import { TreeNode } from "./tree-node";
 import { ITreeDataProvider } from "./tree-data-provider";
 
-class TreeRange {
-  parent: TreeNode = null;
-
-  nodes: TreeNode[] = [];
-
-  start: number = 0;
-
-  get end(): number {
-    return this.start + this.nodes.length;
-  }
-
-  constructor(node: TreeNode = null) {
-    if (node) {
-      this.parent = node.parent;
-      this.start = node.index;
-    }
-  }
-}
-
 export class TreeDataSource extends DataSource<TreeNode> {
   private _unsubscribe$: Subject<any> = new Subject<any>();
 
@@ -52,6 +33,10 @@ export class TreeDataSource extends DataSource<TreeNode> {
 
   selectedNode: TreeNode;
 
+  cache: { [key: string]: TreeNode[][] } = {};
+
+  pageSize: number = 30;
+
   /**
    * Create a new instance of the class.
    * @param dataProvider A tree node data provider.
@@ -62,7 +47,7 @@ export class TreeDataSource extends DataSource<TreeNode> {
 
     if (dataProvider) {
       dataProvider
-        .getRootNodesCount$()
+        .getNodeCount$()
         .pipe(take(1))
         .subscribe(count => {
           this.nodes = this._createDummyNodes(count);
@@ -113,21 +98,18 @@ export class TreeDataSource extends DataSource<TreeNode> {
       return;
     }
 
-    const index = this.nodes.indexOf(node);
+    const i = this.nodes.indexOf(node);
 
-    if (index < 0) {
+    if (i < 0) {
       return;
     }
 
-    let expand = !node.expanded;
-    let i = index + 1;
-
-    if (expand && !node.expanded) {
-      this._insertChildNodes$(i, node, true)
+    if (!node.expanded) {
+      this._insertChildNodes$(i + 1, node, true)
         .pipe(take(1))
         .subscribe();
-    } else if (!expand && node.expanded) {
-      this._removeChildNodes$(i, node, true)
+    } else if (node.expanded) {
+      this._removeChildNodes$(i + 1, node, true)
         .pipe(take(1))
         .subscribe();
     }
@@ -138,64 +120,65 @@ export class TreeDataSource extends DataSource<TreeNode> {
    * @param range Range of visible tree nodes.
    */
   private _loadNodes(range: ListRange) {
-    // Get all the unloaded nodes in the visible range.
-    let nodes = this.nodes.slice(range.start, range.end).filter(node => !node.loaded);
+    let _parentId = "";
+    let _pageIndex = -1;
 
-    if (nodes.length > 0) {
-      // If there are any, load them.
-      this.__loadNodes(new TreeRange(nodes[0]), nodes);
-    }
+    this.nodes
+      .slice(range.start, range.end)
+      .filter(n => !n.loaded)
+      .map(n => {
+        let parentId = n.getParentId();
+
+        if (!this.cache[parentId]) {
+          this.cache[parentId] = [];
+        }
+
+        let pageIndex = n.getPageIndex(this.pageSize);
+
+        if (parentId != _parentId || pageIndex != _pageIndex) {
+          _parentId = parentId;
+          _pageIndex = pageIndex;
+
+          let dataOffset = n.getDataOffset(this.pageSize);
+          let page = this.cache[parentId][pageIndex];
+
+          if (page === undefined) {
+            this.cache[parentId][pageIndex] = [];
+
+            this.dataProvider
+              .getNodes$(n.parent, dataOffset, this.pageSize)
+              .pipe(take(1))
+              .subscribe(data => {
+                this.cache[parentId][pageIndex] = data;
+
+                this.__updateNodes(n.parent, dataOffset, data);
+              });
+          } else if (page.length > 0) {
+            this.__updateNodes(n.parent, dataOffset, page);
+          }
+        }
+      });
   }
 
-  /**
-   * Load the nodes in the given range which have a common parent. Recursively process
-   * all nodes with a different parent.
-   * @param range Range of tree nodes.
-   * @param nodes Array of nodes to be processed.
-   *
-   * @returns Number of processed nodes.
-   */
-  private __loadNodes(range: TreeRange, nodes: TreeNode[]): number {
-    // Iterate over the given nodes.
-    let i = 0;
+  private __updateNodes(parent: TreeNode, offset: number, data: TreeNode[]) {
+    let nodes = this.nodes.filter(n => n.parent == parent).slice(offset, offset + data.length);
+    let modified = false;
 
-    while (i < nodes.length) {
-      let n = nodes[i];
+    console.warn(nodes);
 
-      if (n.parent == range.parent) {
-        // If we are handling the same parent node, append the node
-        // to the array and proceed until the end.
-        range.nodes.push(n);
+    nodes.forEach((n, i) => {
+      let m = data[i];
 
-        i += 1;
-      } else {
-        // Otherwise recurse into the new parent and advance the index
-        // by the number of processed nodes.
-        i += this.__loadNodes(new TreeRange(n), nodes.slice(i));
+      if (m) {
+        this.nodes[this.nodes.indexOf(n)] = m;
+
+        modified = true;
       }
+    });
+
+    if (modified) {
+      this.nodes$.next(this.nodes);
     }
-
-    if (range.nodes.length > 0) {
-      // Load all the nodes in the given range from the data provider
-      // and update the target nodes in the tree.
-      this.dataProvider
-        .getNodes$(range.parent, range.start, range.nodes.length)
-        .pipe(take(1))
-        .subscribe(data => {
-          data.forEach((node, i) => {
-            let n = range.nodes[i];
-
-            if (n) {
-              Object.assign(n, node);
-            }
-          });
-
-          this.nodes$.next(this.nodes);
-        });
-    }
-
-    // Return the number of handled nodes.
-    return range.nodes.length;
   }
 
   /**
@@ -208,6 +191,7 @@ export class TreeDataSource extends DataSource<TreeNode> {
     node.loading = true;
 
     return Observable.create(observer => {
+      // Call getNodeCount$ here..
       this.nodes.splice(index, 0, ...this._createDummyNodes(node.childrenCount, node));
 
       node.loading = false;
@@ -257,6 +241,7 @@ export class TreeDataSource extends DataSource<TreeNode> {
       }
 
       if (n > 0) {
+        console.warn("Removing nodes:", n);
         this.nodes.splice(index, n);
       }
 
