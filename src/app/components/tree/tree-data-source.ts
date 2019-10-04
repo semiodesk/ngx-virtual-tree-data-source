@@ -3,6 +3,7 @@ import { takeUntil, debounce, switchMap, map, concatAll, filter, tap } from "rxj
 import { DataSource, CollectionViewer, ListRange } from "@angular/cdk/collections";
 import { TreeNode } from "./tree-node";
 import { TreeDataProvider } from "./tree-data-provider";
+import { TreeDataCache } from "./tree-data-cache";
 
 /**
  * Data source for a virtualized tree view.
@@ -44,43 +45,36 @@ export class TreeDataSource extends DataSource<TreeNode> {
   /**
    * Node data cache.
    */
-  cache: { [key: string]: TreeNode[][] } = {};
-
-  /**
-   * Amount of items to retrieve from the data provider in a single request.
-   */
-  pageSize: number = 50;
+  cache: TreeDataCache;
 
   /**
    * Create a new instance of the class.
    * @param dataProvider A tree node data provider.
    * @param treeControl The tree control presenting the data.
    */
-  constructor(protected dataProvider: TreeDataProvider) {
+  constructor(dataProvider: TreeDataProvider) {
     super();
+
+    this.cache = new TreeDataCache(dataProvider);
   }
 
   /**
    * Initialize the data source.
    * @param node If provided, loads the all parents and child nodes in the context of the given node.
    */
-  initialize$(node?: TreeNode): Observable<TreeNode> {
+  initialize$(): Observable<TreeNode[]> {
     return Observable.create(observer => {
       if (this._initialized) {
         observer.error({ message: "Data source already initialized." });
         observer.complete();
-      } else if (!this.dataProvider) {
-        observer.error({ message: "Data provider not set." });
-        observer.complete();
       } else {
-        this.dataProvider.getChildNodeCount$().subscribe(count => {
+        this._initialized = true;
+
+        this.cache.getNodeCount$().subscribe(count => {
           this.nodes = this._createDummyNodes(count);
 
-          if (node) {
-            this._createContextNodes(node).subscribe(observer);
-          } else {
-            observer.complete();
-          }
+          observer.next(this.nodes);
+          observer.complete();
         });
       }
     });
@@ -120,9 +114,8 @@ export class TreeDataSource extends DataSource<TreeNode> {
   }
 
   /**
-   * Switch between the selected- or deselected state of a tree view node.
-   * @param node Node to be selected or deselected.
-   * @param expand Indicates if the node should be expanded.
+   * Switch between the expanded and collapsed state of a tree view node.
+   * @param node Node to be toggled.
    */
   toggleNode(node: TreeNode) {
     if (!node.expandable) {
@@ -155,35 +148,21 @@ export class TreeDataSource extends DataSource<TreeNode> {
       .filter(n => !n.loaded)
       .map(n => {
         let parentId = n.parent ? n.parent.id : undefined;
-
-        if (!this.cache[parentId]) {
-          this.cache[parentId] = [];
-        }
-
-        let pageIndex = Math.floor(n.index / this.pageSize);
+        let pageIndex = this.cache.getPageIndex(n.index);
 
         if (parentId != _parentId || pageIndex != _pageIndex) {
           _parentId = parentId;
           _pageIndex = pageIndex;
 
-          let offset = pageIndex * this.pageSize;
-          let page = this.cache[parentId][pageIndex];
+          this.cache.getNodes$(parentId, pageIndex).subscribe(nodes => {
+            if (nodes.length > 0) {
+              let offset = this.cache.getPageOffset(n.index);
 
-          if (page === undefined) {
-            this.cache[parentId][pageIndex] = [];
-
-            this.dataProvider.getNodes$(parentId, offset, this.pageSize).subscribe(data => {
-              this.cache[parentId][pageIndex] = data;
-
-              this._updateNodes(n.parent, offset, data);
+              this._updateNodes(n.parent, offset, nodes);
 
               this.nodes$.next(this.nodes);
-            });
-          } else if (page.length > 0) {
-            this._updateNodes(n.parent, offset, page);
-
-            this.nodes$.next(this.nodes);
-          }
+            }
+          });
         }
       });
   }
@@ -214,17 +193,17 @@ export class TreeDataSource extends DataSource<TreeNode> {
    * Create dummy nodes for all parent and child nodes in the context of a given node.
    * @param node A tree node.
    */
-  private _createContextNodes(node: TreeNode): Observable<TreeNode> {
+  loadNodeContext$(node: TreeNode): Observable<TreeNode> {
     return Observable.create(observer => {
       let i = this.nodes.indexOf(node);
 
       if (i == -1) {
         concat(
-          this.dataProvider.getParentNodes$(node.id).pipe(
+          this.cache.getParentNodes$(node.id).pipe(
             map(parents => parents.concat(node)),
             switchMap(parents =>
               parents.map(n =>
-                this.dataProvider.getNodeInfos$(n.parent ? n.parent.id : undefined).pipe(
+                this.cache.getNodeInfos$(n.parent ? n.parent.id : undefined).pipe(
                   map(infos => {
                     let x = -1;
                     let y = n.parent ? this.nodes.findIndex(m => m.id == n.parent.id) + 1 : 0;
@@ -282,7 +261,7 @@ export class TreeDataSource extends DataSource<TreeNode> {
     let parentId = parent ? parent.id : undefined;
 
     // Either take the children count from the chached tree node or retrieve it from the data provider.
-    let n$ = parent.childrenCount > -1 ? of(parent.childrenCount) : this.dataProvider.getChildNodeCount$(parentId);
+    let n$ = parent.childrenCount > -1 ? of(parent.childrenCount) : this.cache.getNodeCount$(parentId);
 
     // Insert unloaded dummy nodes for the number of children.
     return n$.pipe(

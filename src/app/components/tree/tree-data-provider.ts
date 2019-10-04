@@ -29,7 +29,7 @@ export interface TreeDataProvider {
   getNodes$(parentId?: string, startIndex?: number, itemCount?: number): Observable<TreeNode[]>;
 
   /**
-   * Only get a minimum amount of information about tree nodes.
+   * Get a minimum amount of information about tree nodes.
    * @param parentId Return child nodes of the node with the given id. Leave undefined to get root nodes.
    * @param startIndex Offset index relative to the first child node.
    * @param itemCount Number of items to return.
@@ -40,7 +40,7 @@ export interface TreeDataProvider {
    * Get the number of child nodes for a given parent.
    * @param parentId Return child nodes of the node with the given id. Leave undefined to get root nodes.
    */
-  getChildNodeCount$(parentId?: string): Observable<number>;
+  getNodeCount$(parentId?: string): Observable<number>;
 
   /**
    * Get the parent nodes on a single path down to a root node.

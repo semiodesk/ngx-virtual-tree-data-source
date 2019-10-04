@@ -123,7 +123,7 @@ export class ExampleTreeDataProvider implements TreeDataProvider {
     });
   }
 
-  getChildNodeCount$(parentId: string): Observable<number> {
+  getNodeCount$(parentId: string): Observable<number> {
     if (!parentId) {
       return this._getRootNodeCount$();
     } else {
