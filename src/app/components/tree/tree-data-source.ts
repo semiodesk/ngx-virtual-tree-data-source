@@ -15,6 +15,9 @@ export class TreeDataSource extends DataSource<TreeNode> {
 
   private _range: ListRange;
 
+  /**
+   * All rendered nodes in the tree.
+   */
   get nodes(): TreeNode[] {
     return this.nodes$ ? this.nodes$.value : [];
   }
@@ -23,19 +26,19 @@ export class TreeDataSource extends DataSource<TreeNode> {
     this.nodes$.next(data);
 
     if (this._range) {
-      this.load$.next(this._range);
+      this.loadNodes$.next(this._range);
     }
   }
 
   /**
-   * Observable which allows to subscribe to change events in the data.
+   * Observable which allows to subscribe to change events in the nodes.
    */
   nodes$: BehaviorSubject<TreeNode[]> = new BehaviorSubject<TreeNode[]>(this.nodes);
 
   /**
    * Observable which is emits the data range when nodes need to be loaded.
    */
-  load$: Subject<ListRange> = new Subject<ListRange>();
+  loadNodes$: Subject<ListRange> = new Subject<ListRange>();
 
   /**
    * Currently selected node.
@@ -82,12 +85,12 @@ export class TreeDataSource extends DataSource<TreeNode> {
 
   connect(collectionViewer: CollectionViewer): Observable<TreeNode[]> {
     // Load new nodes when load$ is emitted..
-    this.load$.pipe(takeUntil(this._unsubscribe$)).subscribe(range => this._loadNodesInRange(range));
+    this.loadNodes$.pipe(takeUntil(this._unsubscribe$)).subscribe(range => this._loadNodesInRange(range));
 
     // After a debounce period, load new nodes when the viewed data range has changed..
     collectionViewer.viewChange.pipe(debounce(() => timer(200))).subscribe(range => {
       this._range = range;
-      this.load$.next(range);
+      this.loadNodes$.next(range);
     });
 
     return this.nodes$;
@@ -276,7 +279,7 @@ export class TreeDataSource extends DataSource<TreeNode> {
         }
 
         if (emitLoad) {
-          this.load$.next(this._range);
+          this.loadNodes$.next(this._range);
         }
       })
     );
@@ -333,7 +336,7 @@ export class TreeDataSource extends DataSource<TreeNode> {
       }
 
       if (emitLoad) {
-        this.load$.next(this._range);
+        this.loadNodes$.next(this._range);
       }
 
       observer.next(n);
