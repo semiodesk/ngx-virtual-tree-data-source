@@ -1,4 +1,4 @@
-import { TreeNode } from "./tree-node";
+import { TreeNode } from "./components/tree/tree-node";
 
 /**
  * Generate large amounts of tree nodes for testing.
@@ -47,9 +47,7 @@ export class TreeNodeGenerator {
     node.level = level;
     node.parent = parentNode;
     node.childrenCount = childrenCount;
-    node.loaded = true;
     node.loading = false;
-    node.expandable = childrenCount > 0;
     node.expanded = false;
 
     if (this._nodeCreated) {

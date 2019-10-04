@@ -1,0 +1,79 @@
+<div class="row">
+  <div class="col-md-8">
+    <cdk-virtual-scroll-viewport itemSize="32" style="height: 500px;">
+      <ngx-tree-node *cdkVirtualFor="let node of dataSource" [node]="node" (click)="select(node)">
+        <ngx-tree-node-toggle [node]="node" (click)="toggle(node)">
+          <mat-icon>chevron_right</mat-icon>
+        </ngx-tree-node-toggle>
+        <div *ngIf="node.data">{{ node.data }}</div>
+        <progress-spinner *ngIf="!node.data">...</progress-spinner>
+      </ngx-tree-node>
+    </cdk-virtual-scroll-viewport>
+  </div>
+  <div class="col-md-4 text-muted">
+    <h6>Data Source</h6>
+    <table class="w-100 text-muted">
+      <tr *ngIf="dataProvider">
+        <td class="pr-5">Total Nodes:</td>
+        <td class="text-right">{{ dataProvider.nodeCount }}</td>
+      </tr>
+      <tr *ngIf="dataSource?.nodes">
+        <td class="pr-5">Root Nodes:</td>
+        <td class="text-right">{{ dataSource.nodes.length }}</td>
+      </tr>
+    </table>
+
+    <h6 class="mt-4">Visual Range</h6>
+    <table class="w-100 text-muted" *ngIf="range$ | async; let range">
+      <tr>
+        <td class="pr-5">Start:</td>
+        <td class="text-right">{{ range.start }}</td>
+      </tr>
+      <tr>
+        <td class="pr-5">End:</td>
+        <td class="text-right">{{ range.end }}</td>
+      </tr>
+    </table>
+
+    <h6 class="mt-4">Selected Node</h6>
+    <div *ngIf="!dataSource?.selectedNode">None</div>
+    <table class="w-100 text-muted" *ngIf="dataSource?.selectedNode">
+      <tr>
+        <td class="pr-5">Id:</td>
+        <td class="text-right">{{ dataSource.selectedNode.id }}</td>
+      </tr>
+      <tr>
+        <td class="pr-5">Parent:</td>
+        <td class="text-right">{{ dataSource.selectedNode.parent?.id }}</td>
+      </tr>
+      <tr>
+        <td class="pr-5">Children:</td>
+        <td class="text-right">{{ dataSource.selectedNode.childrenCount }}</td>
+      </tr>
+      <tr>
+        <td class="pr-5">Index:</td>
+        <td class="text-right">{{ dataSource.selectedNode.index }}</td>
+      </tr>
+      <tr>
+        <td class="pr-5">Level:</td>
+        <td class="text-right">{{ dataSource.selectedNode.level }}</td>
+      </tr>
+      <tr>
+        <td class="pr-5">Loading:</td>
+        <td class="text-right">{{ dataSource.selectedNode.loading }}</td>
+      </tr>
+      <tr>
+        <td class="pr-5">Loaded:</td>
+        <td class="text-right">{{ dataSource.selectedNode.loaded }}</td>
+      </tr>
+      <tr>
+        <td class="pr-5">Expandable:</td>
+        <td class="text-right">{{ dataSource.selectedNode.expandable }}</td>
+      </tr>
+      <tr>
+        <td class="pr-5">Expanded:</td>
+        <td class="text-right">{{ dataSource.selectedNode.expanded }}</td>
+      </tr>
+    </table>
+  </div>
+</div>

@@ -1,0 +1,29 @@
+.tree-node-toggle {
+  margin-right: 5px;
+  outline: none;
+  transition: transform cubic-bezier(0.075, 0.82, 0.165, 1) 200ms;
+}
+
+.tree-node-toggle {
+  background-color: transparent;
+  color: inherit;
+}
+
+.tree-node-toggle:focus,
+.tree-node-toggle:active {
+  background-color: #007bff;
+  color: white;
+}
+
+.tree-node-toggle.toggled {
+  transform: rotate(90deg);
+}
+
+.tree-node-toggle.invisible {
+  visibility: hidden;
+}
+
+.mat-button {
+  height: 32px;
+  width: 32px;
+}

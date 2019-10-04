@@ -1,0 +1,9 @@
+<button
+  class="tree-node-toggle"
+  mat-button
+  mat-icon-button
+  [class.toggled]="node.expanded"
+  [class.invisible]="!node.expandable"
+>
+  <ng-content></ng-content>
+</button>
