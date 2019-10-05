@@ -27,12 +27,10 @@ export class TreeExample implements OnDestroy, AfterViewInit {
   range$: Subject<ListRange> = new Subject<ListRange>();
 
   constructor() {
-    let node = this.dataProvider.getRandomNode();
-
     this.dataSource = new TreeDataSource(this.dataProvider);
     this.dataSource
       .initialize$()
-      .pipe(switchMap(() => this.dataSource.loadNodeContext$(node)))
+      .pipe(switchMap(() => this.dataSource.loadNodeContext$(this.dataProvider.getRandomNode())))
       .subscribe(n => {
         this.dataSource.selectNode(n);
 
@@ -49,6 +47,7 @@ export class TreeExample implements OnDestroy, AfterViewInit {
       this.range$.next(range);
     });
 
+    // Simulate selecting arbitrary nodes at runtime.
     this.dataSource.loadNodeContext$(this.dataProvider.getRandomNode()).subscribe(n => {
       this.dataSource.selectNode(n);
 

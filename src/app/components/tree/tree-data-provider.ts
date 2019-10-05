@@ -1,20 +1,5 @@
 import { Observable } from "rxjs";
-import { TreeNode } from "./tree-node";
-
-/**
- * Exposes a minimal set of tree node data which is required to identify and render tree nodes.
- */
-export interface TreeNodeInfo {
-  /**
-   * Node identifier.
-   */
-  id: string;
-
-  /**
-   * Number of child nodes.
-   */
-  childrenCount: number;
-}
+import { ITreeNodeBase, ITreeNode } from "./tree-node";
 
 /**
  * Exposes methods for retrieving tree nodes in a virtualized tree view.
@@ -26,7 +11,7 @@ export interface TreeDataProvider {
    * @param startIndex Offset index relative to the first child node.
    * @param itemCount Number of items to return.
    */
-  getNodes$(parentId?: string, startIndex?: number, itemCount?: number): Observable<TreeNode[]>;
+  getNodes$(parentId?: string, startIndex?: number, itemCount?: number): Observable<ITreeNode[]>;
 
   /**
    * Get a minimum amount of information about tree nodes.
@@ -34,7 +19,7 @@ export interface TreeDataProvider {
    * @param startIndex Offset index relative to the first child node.
    * @param itemCount Number of items to return.
    */
-  getNodeInfos$(parentId?: string, startIndex?: number, itemCount?: number): Observable<TreeNodeInfo[]>;
+  getNodeInfos$(parentId?: string, startIndex?: number, itemCount?: number): Observable<ITreeNodeBase[]>;
 
   /**
    * Get the number of child nodes for a given parent.
@@ -46,5 +31,5 @@ export interface TreeDataProvider {
    * Get the parent nodes on a single path down to a root node.
    * @param nodeId Return parent nodes of the node with the given id.
    */
-  getParentNodes$(nodeId: string): Observable<TreeNode[]>;
+  getParentNodes$(nodeId: string): Observable<ITreeNode[]>;
 }

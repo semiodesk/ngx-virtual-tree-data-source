@@ -1,7 +1,77 @@
 /**
+ * Exposes basic data which is required to identify and render tree nodes.
+ */
+export interface ITreeNodeBase {
+  /**
+   * Node identifier.
+   */
+  id: string;
+
+  /**
+   * Number of child nodes.
+   */
+  childrenCount: number;
+}
+
+/**
+ * Exposes data which is required to render, manage and interact with tree nodes.
+ */
+export interface ITreeNode extends ITreeNodeBase {
+  /**
+   * An object associated with the node.
+   */
+  data: any;
+
+  /**
+   * Number of parent nodes including the root node.
+   */
+  level: number;
+
+  /**
+   * Node which this node is subordinated.
+   */
+  parent: TreeNode;
+
+  /**
+   * Indicates if the node has any child nodes.
+   */
+  expandable: boolean;
+
+  /**
+   * Indicates if the child nodes of this node are visible.
+   */
+  expanded: boolean;
+
+  /**
+   * Indicates if this node can be selected.
+   */
+  selectable: boolean;
+
+  /**
+   * Indicates if this node is selected.
+   */
+  selected: boolean;
+
+  /**
+   * Indicates if the data for this node is available.
+   */
+  loaded: boolean;
+
+  /**
+   * Indicates if data for this node is being retrieved.
+   */
+  loading: boolean;
+
+  /**
+   * Index in the child node list of the parent node.
+   */
+  index: number;
+}
+
+/**
  * A node in a tree view.
  */
-export class TreeNode {
+export class TreeNode implements ITreeNode {
   /**
    * Node identifier.
    */
@@ -71,7 +141,7 @@ export class TreeNode {
    * @param parent Parent node.
    * @param init Additional node properties to be initialized.
    */
-  constructor(parent?: TreeNode, init?: Partial<TreeNode>) {
+  constructor(parent?: ITreeNode, init?: Partial<ITreeNode>) {
     if (init) {
       Object.assign(this, init);
     }

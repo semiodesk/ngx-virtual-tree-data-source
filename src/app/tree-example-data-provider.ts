@@ -1,19 +1,19 @@
-import { TreeNode } from "./components/tree/tree-node";
-import { TreeDataProvider, TreeNodeInfo } from "./components/tree/tree-data-provider";
+import { ITreeNodeBase, ITreeNode, TreeNode } from "./components/tree/tree-node";
+import { TreeDataProvider } from "./components/tree/tree-data-provider";
 import { TreeNodeGenerator } from "./tree-node-generator";
 import { Observable } from "rxjs";
 
 interface TreeNodeMap {
-  [id: string]: TreeNode[];
+  [id: string]: ITreeNode[];
 }
 
 export class ExampleTreeDataProvider implements TreeDataProvider {
   private _delayEnabled: boolean = true;
 
-  private _data: TreeNode[];
+  private _nodes: ITreeNode[] = [];
 
-  private _nodes: TreeNode[] = [];
-
+  private _rootNodes: ITreeNode[];
+  
   private _parentNodes: TreeNodeMap = {};
 
   private _childNodes: TreeNodeMap = {};
@@ -26,7 +26,7 @@ export class ExampleTreeDataProvider implements TreeDataProvider {
 
     this.nodeCount = rootCount * childCount * childCount;
 
-    this._data = new TreeNodeGenerator((node, parent) => {
+    this._rootNodes = new TreeNodeGenerator((node, parent) => {
       this._nodes.push(node);
 
       if (parent) {
@@ -45,7 +45,7 @@ export class ExampleTreeDataProvider implements TreeDataProvider {
     }).generate(rootCount, childCount);
   }
 
-  public getRandomNode() {
+  public getRandomNode(): ITreeNode {
     return this._nodes[Math.floor(Math.random() * this._nodes.length)];
   }
 
@@ -53,7 +53,7 @@ export class ExampleTreeDataProvider implements TreeDataProvider {
     return this._delayEnabled ? Math.random() * 1000 : 0;
   }
 
-  getNodes$(parentId: string, startIndex?: number, itemCount?: number): Observable<TreeNode[]> {
+  getNodes$(parentId: string, startIndex?: number, itemCount?: number): Observable<ITreeNode[]> {
     if (!parentId) {
       return this.getRootNodes$(startIndex, itemCount);
     } else {
@@ -61,7 +61,7 @@ export class ExampleTreeDataProvider implements TreeDataProvider {
     }
   }
 
-  getRootNodes$(startIndex: number = -1, itemCount: number = -1): Observable<TreeNode[]> {
+  getRootNodes$(startIndex: number = -1, itemCount: number = -1): Observable<ITreeNode[]> {
     let delay = this._getDelay();
 
     console.warn("getRootNodes$", startIndex, itemCount, delay.toFixed(0) + "ms");
@@ -69,9 +69,9 @@ export class ExampleTreeDataProvider implements TreeDataProvider {
     return Observable.create(observer => {
       setTimeout(() => {
         if (startIndex > -1 && itemCount > -1) {
-          observer.next(this._data.slice(startIndex, startIndex + itemCount));
+          observer.next(this._rootNodes.slice(startIndex, startIndex + itemCount));
         } else {
-          observer.next(this._data);
+          observer.next(this._rootNodes);
         }
 
         observer.complete();
@@ -79,7 +79,7 @@ export class ExampleTreeDataProvider implements TreeDataProvider {
     });
   }
 
-  getChildNodes$(parentId: string, startIndex = -1, itemCount = -1): Observable<TreeNode[]> {
+  getChildNodes$(parentId: string, startIndex = -1, itemCount = -1): Observable<ITreeNode[]> {
     let delay = this._getDelay();
 
     console.warn("getChildNodes$", parentId, startIndex, itemCount, delay.toFixed(0) + "ms");
@@ -101,7 +101,7 @@ export class ExampleTreeDataProvider implements TreeDataProvider {
     });
   }
 
-  getNodeInfos$(parentId: string, startIndex: number = -1, itemCount: number = -1): Observable<TreeNodeInfo[]> {
+  getNodeInfos$(parentId: string, startIndex: number = -1, itemCount: number = -1): Observable<ITreeNodeBase[]> {
     let delay = this._getDelay();
 
     console.warn("getNodeInfos$", parentId, startIndex, itemCount, delay.toFixed(0) + "ms");
@@ -114,8 +114,8 @@ export class ExampleTreeDataProvider implements TreeDataProvider {
           if (children) {
             observer.next(children.map(n => ({ id: n.id, childrenCount: n.childrenCount })));
           }
-        } else if (this._data) {
-          observer.next(this._data.map(n => ({ id: n.id, childrenCount: n.childrenCount })));
+        } else if (this._rootNodes) {
+          observer.next(this._rootNodes.map(n => ({ id: n.id, childrenCount: n.childrenCount })));
         }
 
         observer.complete();
@@ -138,7 +138,7 @@ export class ExampleTreeDataProvider implements TreeDataProvider {
 
     return Observable.create(observer => {
       setTimeout(() => {
-        observer.next(this._data.length);
+        observer.next(this._rootNodes.length);
         observer.complete();
       }, delay);
     });
@@ -164,7 +164,7 @@ export class ExampleTreeDataProvider implements TreeDataProvider {
     });
   }
 
-  getParentNodes$(nodeId: string): Observable<TreeNode[]> {
+  getParentNodes$(nodeId: string): Observable<ITreeNode[]> {
     let delay = this._getDelay();
 
     console.warn("getParentNodes$", nodeId, delay.toFixed(0) + "ms");
@@ -177,7 +177,7 @@ export class ExampleTreeDataProvider implements TreeDataProvider {
     });
   }
 
-  _getParentNodes(nodeId: string): TreeNode[] {
+  _getParentNodes(nodeId: string): ITreeNode[] {
     let parents = this._parentNodes[nodeId];
 
     if (parents && parents.length > 0) {

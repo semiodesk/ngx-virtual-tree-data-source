@@ -3,7 +3,7 @@ import { takeUntil, debounce, switchMap, map, concatAll, filter, tap } from "rxj
 import { DataSource, CollectionViewer, ListRange } from "@angular/cdk/collections";
 import { TreeNode } from "./tree-node";
 import { TreeDataProvider } from "./tree-data-provider";
-import { TreeDataCache } from "./tree-data-cache";
+import { TreeDataProxy } from "./tree-data-proxy";
 
 /**
  * Data source for a virtualized tree view.
@@ -48,7 +48,7 @@ export class TreeDataSource extends DataSource<TreeNode> {
   /**
    * Node data cache.
    */
-  cache: TreeDataCache;
+  proxy: TreeDataProxy;
 
   /**
    * Create a new instance of the class.
@@ -58,7 +58,7 @@ export class TreeDataSource extends DataSource<TreeNode> {
   constructor(dataProvider: TreeDataProvider) {
     super();
 
-    this.cache = new TreeDataCache(dataProvider);
+    this.proxy = new TreeDataProxy(dataProvider);
   }
 
   /**
@@ -73,7 +73,7 @@ export class TreeDataSource extends DataSource<TreeNode> {
       } else {
         this._initialized = true;
 
-        this.cache.getNodeCount$().subscribe(count => {
+        this.proxy.getNodeCount$().subscribe(count => {
           this.nodes = this._createDummyNodes(count);
 
           observer.next(this.nodes);
@@ -151,15 +151,15 @@ export class TreeDataSource extends DataSource<TreeNode> {
       .filter(n => !n.loaded)
       .map(n => {
         let parentId = n.parent ? n.parent.id : undefined;
-        let pageIndex = this.cache.getPageIndex(n.index);
+        let pageIndex = this.proxy.getPageIndex(n.index);
 
         if (parentId != _parentId || pageIndex != _pageIndex) {
           _parentId = parentId;
           _pageIndex = pageIndex;
 
-          this.cache.getNodes$(parentId, pageIndex).subscribe(nodes => {
+          this.proxy.getNodes$(parentId, pageIndex).subscribe(nodes => {
             if (nodes.length > 0) {
-              let offset = this.cache.getPageOffset(n.index);
+              let offset = this.proxy.getPageOffset(n.index);
 
               this._updateNodes(n.parent, offset, nodes);
 
@@ -202,11 +202,11 @@ export class TreeDataSource extends DataSource<TreeNode> {
 
       if (i == -1) {
         concat(
-          this.cache.getParentNodes$(node.id).pipe(
+          this.proxy.getParentNodes$(node.id).pipe(
             map(parents => parents.concat(node)),
             switchMap(parents =>
               parents.map(n =>
-                this.cache.getNodeInfos$(n.parent ? n.parent.id : undefined).pipe(
+                this.proxy.getNodeInfos$(n.parent ? n.parent.id : undefined).pipe(
                   map(infos => {
                     let x = -1;
                     let y = n.parent ? this.nodes.findIndex(m => m.id == n.parent.id) + 1 : 0;
@@ -264,7 +264,7 @@ export class TreeDataSource extends DataSource<TreeNode> {
     let parentId = parent ? parent.id : undefined;
 
     // Either take the children count from the chached tree node or retrieve it from the data provider.
-    let n$ = parent.childrenCount > -1 ? of(parent.childrenCount) : this.cache.getNodeCount$(parentId);
+    let n$ = parent.childrenCount > -1 ? of(parent.childrenCount) : this.proxy.getNodeCount$(parentId);
 
     // Insert unloaded dummy nodes for the number of children.
     return n$.pipe(

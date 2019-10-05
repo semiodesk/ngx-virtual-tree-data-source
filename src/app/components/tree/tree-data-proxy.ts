@@ -1,21 +1,21 @@
-import { TreeNode } from "./tree-node";
-import { TreeNodeInfo, TreeDataProvider } from "./tree-data-provider";
+import { ITreeNodeBase, ITreeNode } from "./tree-node";
+import { TreeDataProvider } from "./tree-data-provider";
 import { Observable, of } from "rxjs";
 import { tap } from "rxjs/operators";
 
 /**
- * Provides cached access to tree node data provider methods.
+ * Provides cached access to tree data provider methods.
  */
-export class TreeDataCache {
+export class TreeDataProxy {
   /**
    * Caches the child nodes for a node. These are organized in pages with a maximum size defined by pageSize.
    */
-  nodes: { [key: string]: TreeNode[][] } = {};
+  nodes: { [key: string]: ITreeNode[][] } = {};
 
   /**
    * Caches child node data for a given parent node id.
    */
-  nodeInfos: { [key: string]: TreeNodeInfo[] } = {};
+  nodeInfos: { [key: string]: ITreeNodeBase[] } = {};
 
   /**
    * Caches the number of children for a node id.
@@ -25,7 +25,7 @@ export class TreeDataCache {
   /**
    * Caches the parent nodes for a node.
    */
-  parentNodes: { [key: string]: TreeNode[] } = {};
+  parentNodes: { [key: string]: ITreeNode[] } = {};
 
   /**
    * Amount of items to retrieve from the data provider in a single request.
@@ -55,7 +55,7 @@ export class TreeDataCache {
    * @param parentId Return child nodes of the node with the given id. Leave undefined to get root nodes.
    * @param pageIndex Index of the cache page to be laoded.
    */
-  getNodes$(parentId?: string, pageIndex?: number): Observable<TreeNode[]> {
+  getNodes$(parentId?: string, pageIndex?: number): Observable<ITreeNode[]> {
     if (!this.nodes[parentId]) {
       this.nodes[parentId] = [];
     }
@@ -81,7 +81,7 @@ export class TreeDataCache {
    * @param startIndex Offset index relative to the first child node.
    * @param itemCount Number of items to return.
    */
-  getNodeInfos$(parentId?: string, startIndex?: number, itemCount?: number): Observable<TreeNodeInfo[]> {
+  getNodeInfos$(parentId?: string, startIndex?: number, itemCount?: number): Observable<ITreeNodeBase[]> {
     let infos = this.nodeInfos[parentId];
 
     return infos ? of(infos) : this._dataProvider.getNodeInfos$(parentId);
@@ -101,7 +101,7 @@ export class TreeDataCache {
    * Get the parent nodes on a single path down to a root node.
    * @param nodeId Return parent nodes of the node with the given id.
    */
-  getParentNodes$(nodeId: string): Observable<TreeNode[]> {
+  getParentNodes$(nodeId: string): Observable<ITreeNode[]> {
     let nodes = this.parentNodes[nodeId];
 
     return nodes ? of(nodes) : this._dataProvider.getParentNodes$(nodeId);
