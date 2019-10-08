@@ -8,9 +8,9 @@ export interface ITreeNodeBase {
   id: string;
 
   /**
-   * Number of child nodes.
+   * Indicates if the node has any child nodes.
    */
-  childrenCount: number;
+  expandable: boolean;
 }
 
 /**
@@ -30,12 +30,7 @@ export interface ITreeNode extends ITreeNodeBase {
   /**
    * Node which this node is subordinated.
    */
-  parent: TreeNode;
-
-  /**
-   * Indicates if the node has any child nodes.
-   */
-  expandable: boolean;
+  parent: ITreeNode;
 
   /**
    * Indicates if the child nodes of this node are visible.
@@ -93,16 +88,9 @@ export class TreeNode implements ITreeNode {
   parent: TreeNode;
 
   /**
-   * Number of child nodes.
-   */
-  childrenCount: number = -1;
-
-  /**
    * Indicates if the node has any child nodes.
    */
-  get expandable(): boolean {
-    return this.childrenCount > 0;
-  }
+  expandable: boolean = false;
 
   /**
    * Indicates if the child nodes of this node are visible.

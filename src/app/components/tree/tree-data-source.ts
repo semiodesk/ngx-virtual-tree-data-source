@@ -1,8 +1,8 @@
 import { BehaviorSubject, Observable, Subject, timer, concat, of } from "rxjs";
 import { takeUntil, debounce, switchMap, map, concatAll, filter, tap } from "rxjs/operators";
 import { DataSource, CollectionViewer, ListRange } from "@angular/cdk/collections";
-import { TreeNode } from "./tree-node";
-import { TreeDataProvider } from "./tree-data-provider";
+import { TreeNode, ITreeNodeBase } from "./tree-node";
+import { ITreeDataProvider } from "./tree-data-provider";
 import { TreeDataProxy } from "./tree-data-proxy";
 
 /**
@@ -55,7 +55,7 @@ export class TreeDataSource extends DataSource<TreeNode> {
    * @param dataProvider A tree node data provider.
    * @param treeControl The tree control presenting the data.
    */
-  constructor(dataProvider: TreeDataProvider) {
+  constructor(dataProvider: ITreeDataProvider) {
     super();
 
     this.proxy = new TreeDataProxy(dataProvider);
@@ -73,8 +73,8 @@ export class TreeDataSource extends DataSource<TreeNode> {
       } else {
         this._initialized = true;
 
-        this.proxy.getNodeCount$().subscribe(count => {
-          this.nodes = this._createDummyNodes(count);
+        this.proxy.getNodeChildrenStats().subscribe(n => {
+          this.nodes = this._createDummyNodes(n);
 
           observer.next(this.nodes);
           observer.complete();
@@ -157,7 +157,7 @@ export class TreeDataSource extends DataSource<TreeNode> {
           _parentId = parentId;
           _pageIndex = pageIndex;
 
-          this.proxy.getNodes$(parentId, pageIndex).subscribe(nodes => {
+          this.proxy.getNodes$(n.parent, pageIndex).subscribe(nodes => {
             if (nodes.length > 0) {
               let offset = this.proxy.getPageOffset(n.index);
 
@@ -186,7 +186,7 @@ export class TreeDataSource extends DataSource<TreeNode> {
         Object.assign(n, {
           id: m.id,
           data: m.data,
-          childrenCount: m.childrenCount
+          expandable: m.expandable
         });
       }
     });
@@ -202,11 +202,11 @@ export class TreeDataSource extends DataSource<TreeNode> {
 
       if (i == -1) {
         concat(
-          this.proxy.getParentNodes$(node.id).pipe(
+          this.proxy.getParentNodes$(node).pipe(
             map(parents => parents.concat(node)),
             switchMap(parents =>
               parents.map(n =>
-                this.proxy.getNodeInfos$(n.parent ? n.parent.id : undefined).pipe(
+                this.proxy.getNodeChildrenStats(n.parent).pipe(
                   map(infos => {
                     let x = -1;
                     let y = n.parent ? this.nodes.findIndex(m => m.id == n.parent.id) + 1 : 0;
@@ -215,7 +215,7 @@ export class TreeDataSource extends DataSource<TreeNode> {
                       let m = this.nodes[y + z];
 
                       m.id = info.id;
-                      m.childrenCount = info.childrenCount;
+                      m.expandable = info.expandable;
 
                       if (m.id == n.id) {
                         x = y + z;
@@ -261,13 +261,8 @@ export class TreeDataSource extends DataSource<TreeNode> {
   ): Observable<number> {
     parent.loading = true;
 
-    let parentId = parent ? parent.id : undefined;
-
-    // Either take the children count from the chached tree node or retrieve it from the data provider.
-    let n$ = parent.childrenCount > -1 ? of(parent.childrenCount) : this.proxy.getNodeCount$(parentId);
-
     // Insert unloaded dummy nodes for the number of children.
-    return n$.pipe(
+    return this.proxy.getNodeChildrenStats(parent).pipe(
       tap(n => {
         this.nodes.splice(index, 0, ...this._createDummyNodes(n, parent));
 
@@ -281,7 +276,8 @@ export class TreeDataSource extends DataSource<TreeNode> {
         if (emitLoad) {
           this.loadNodes$.next(this._range);
         }
-      })
+      }),
+      map(n => n.length)
     );
   }
 
@@ -290,11 +286,13 @@ export class TreeDataSource extends DataSource<TreeNode> {
    * @param count Number of created nodes.
    * @param parent Parent node of the newly created nodes.
    */
-  private _createDummyNodes(count: number, parent?: TreeNode): TreeNode[] {
-    let nodes = new Array<TreeNode>(count);
+  private _createDummyNodes(infos: ITreeNodeBase[], parent?: TreeNode): TreeNode[] {
+    let nodes = new Array<TreeNode>(infos.length);
 
-    for (let i = 0; i < count; i++) {
-      nodes[i] = new TreeNode(parent, { index: i });
+    for (let i = 0; i < infos.length; i++) {
+      let n = infos[i];
+
+      nodes[i] = new TreeNode(parent, { index: i, id: n.id, expandable: n.expandable });
     }
 
     return nodes;

@@ -4,32 +4,26 @@ import { ITreeNodeBase, ITreeNode } from "./tree-node";
 /**
  * Exposes methods for retrieving tree nodes in a virtualized tree view.
  */
-export interface TreeDataProvider {
+export interface ITreeDataProvider {
   /**
    * Get tree nodes with full node data.
-   * @param parentId Return child nodes of the node with the given id. Leave undefined to get root nodes.
+   * @param parent Return child nodes of the node with the given id. Leave undefined to get root nodes.
    * @param startIndex Offset index relative to the first child node.
    * @param itemCount Number of items to return.
    */
-  getNodes$(parentId?: string, startIndex?: number, itemCount?: number): Observable<ITreeNode[]>;
+  getNodes$(parent?: ITreeNode, startIndex?: number, itemCount?: number): Observable<ITreeNode[]>;
 
   /**
    * Get a minimum amount of information about tree nodes.
-   * @param parentId Return child nodes of the node with the given id. Leave undefined to get root nodes.
+   * @param parent Return child nodes of the node with the given id. Leave undefined to get root nodes.
    * @param startIndex Offset index relative to the first child node.
    * @param itemCount Number of items to return.
    */
-  getNodeInfos$(parentId?: string, startIndex?: number, itemCount?: number): Observable<ITreeNodeBase[]>;
-
-  /**
-   * Get the number of child nodes for a given parent.
-   * @param parentId Return child nodes of the node with the given id. Leave undefined to get root nodes.
-   */
-  getNodeCount$(parentId?: string): Observable<number>;
+  getNodeInfos$(parent?: ITreeNode, startIndex?: number, itemCount?: number): Observable<ITreeNodeBase[]>;
 
   /**
    * Get the parent nodes on a single path down to a root node.
-   * @param nodeId Return parent nodes of the node with the given id.
+   * @param node Return parent nodes of the node with the given id.
    */
-  getParentNodes$(nodeId: string): Observable<ITreeNode[]>;
+  getParentNodes$(node: ITreeNode): Observable<ITreeNode[]>;
 }

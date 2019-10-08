@@ -46,7 +46,7 @@ export class TreeNodeGenerator {
     node.data = "Node " + id;
     node.level = level;
     node.parent = parentNode;
-    node.childrenCount = childrenCount;
+    node.expandable = childrenCount > 0;
     node.loading = false;
     node.expanded = false;
 

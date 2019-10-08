@@ -30,32 +30,21 @@ export class TreeExample implements OnDestroy, AfterViewInit {
     this.dataSource = new TreeDataSource(this.dataProvider);
     this.dataSource
       .initialize$()
-      .pipe(switchMap(() => this.dataSource.loadNodeContext$(this.dataProvider.getRandomNode())))
+      // .pipe(switchMap(() => this.dataSource.loadNodeContext$(this.dataProvider.getRandomNode())))
       .subscribe(n => {
-        this.dataSource.selectNode(n);
+        // this.dataSource.selectNode(n);
 
-        let i = this.dataSource.nodes.findIndex(m => m.id == n.id);
+        // let i = this.dataSource.nodes.findIndex(m => m.id == n.id);
 
-        if (i > -1) {
-          this.virtualScroll.scrollToIndex(Math.max(0, i));
-        }
+        // if (i > -1) {
+        //   this.virtualScroll.scrollToIndex(Math.max(0, i));
+        // }
       });
   }
 
   ngAfterViewInit() {
     this.virtualScroll.renderedRangeStream.subscribe(range => {
       this.range$.next(range);
-    });
-
-    // Simulate selecting arbitrary nodes at runtime.
-    this.dataSource.loadNodeContext$(this.dataProvider.getRandomNode()).subscribe(n => {
-      this.dataSource.selectNode(n);
-
-      let i = this.dataSource.nodes.findIndex(m => m.id == n.id);
-
-      if (i > -1) {
-        this.virtualScroll.scrollToIndex(Math.max(0, i));
-      }
     });
   }
 
